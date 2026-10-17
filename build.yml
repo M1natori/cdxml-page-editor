@@ -1,0 +1,38 @@
+name: build
+
+on: [workflow_dispatch]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            name: windows
+          - os: macos-latest
+            name: mac-apple-silicon
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install PyInstaller
+        run: python -m pip install pyinstaller
+      - name: Build
+        shell: bash
+        run: |
+          python -m PyInstaller --noconfirm --onefile --windowed --name CDXMLPageEditor cdxml_pages_gui.py
+          python -m PyInstaller --noconfirm --onefile --console --name cdxml_pages cdxml_pages.py
+      - name: Package (mac)
+        if: runner.os == 'macOS'
+        run: |
+          cd dist
+          rm -f CDXMLPageEditor
+          ditto -c -k --keepParent CDXMLPageEditor.app CDXMLPageEditor-mac.zip
+          rm -rf CDXMLPageEditor.app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CDXMLPageEditor-${{ matrix.name }}
+          path: dist/
